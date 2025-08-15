@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth" x-data="siteState()" :class="dark ? 'dark' : ''">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wells Digital — Portfolio (3D Parallax Hero)</title>
+  <meta name="description" content="Design-led websites with a cinematic 3D hero background and premium motion.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode:'class', theme:{ extend:{ fontFamily:{ inter:['Inter','ui-sans-serif','system-ui','sans-serif'], grotesk:['Space Grotesk','ui-sans-serif','system-ui','sans-serif'] }, boxShadow:{ glow:'0 0 0 3px rgba(59,130,246,.25), 0 10px 30px rgba(0,0,0,.25)' } } } }
+  </script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- AOS -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <!-- Three.js -->
+  <script src="https://unpkg.com/three@0.157.0/build/three.min.js"></script>
+
+  <style>
+    :root{
+      --primary:#00d2ff;
+      --radius:16px;
+      --grain:.04;
+      --font-ui:'Inter', system-ui, sans-serif;
+      --font-display:'Space Grotesk', system-ui, sans-serif;
+    }
+    html{ font-family:var(--font-ui) }
+    .display{ font-family:var(--font-display); letter-spacing:-0.02em }
+    .bg-primary{ background:var(--primary) } .text-primary{ color:var(--primary) }
+    .rounded-theme{ border-radius:var(--radius) }
+    .grain:before{ content:''; position:fixed; inset:-20%; pointer-events:none; z-index:0; background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"1200\" viewBox=\"0 0 1200 1200\"><filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.8\" numOctaves=\"4\" stitchTiles=\"stitch\"/></filter><rect width=\"1200\" height=\"1200\" filter=\"url(%23n)\" opacity=\"0.25\"/></svg>'); mix-blend-mode:overlay; opacity:var(--grain) }
+    .hero-overlay{ background: radial-gradient(60% 60% at 50% 50%, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%) }
+    .glass{ backdrop-filter:blur(12px); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08) }
+    .dark .glass{ background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.06) }
+    .hover-raise{ transform:translateY(0); transition:transform .4s ease, box-shadow .4s ease } .hover-raise:hover{ transform:translateY(-6px); box-shadow:0 12px 40px rgba(0,0,0,.25) }
+    @media (prefers-reduced-motion: reduce){ .aos-init,.aos-animate{ transition:none !important; animation:none !important } }
+
+    /* Header reveal on top-hover */
+    header[data-hidden="true"]{ transform:translateY(-100%); opacity:0; pointer-events:none }
+    header{ transition: transform .45s ease, opacity .45s ease }
+    #top-hover-zone{ position:fixed; top:0; left:0; right:0; height:20px; z-index:60 }
+
+    /* 3D hero container */
+    #three-hero{ position:absolute; inset:0; z-index:0; }
+    #three-hero canvas{ display:block; width:100%; height:100% }
+  </style>
+</head>
+
+<body class="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased grain">
+  <div id="top-hover-zone"></div>
+  <!-- Header (auto-hidden, hover top to reveal) -->
+  <header class="fixed top-0 inset-x-0 z-50" data-hidden="true" @mouseenter="showHeader()" @focusin="showHeader()">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mt-4 rounded-theme glass">
+        <div class="flex items-center justify-between px-4 py-3">
+          <a href="#" class="flex items-center gap-2 font-semibold tracking-tight"><span class="text-2xl">⚡</span><span>Wells Digital</span></a>
+          <nav class="hidden md:flex items-center gap-8 text-sm font-medium">
+            <a href="#portfolio" class="hover:text-primary">Work</a>
+            <a href="#packages" class="hover:text-primary">Packages</a>
+            <a href="#features" class="hover:text-primary">Features</a>
+            <a href="#faq" class="hover:text-primary">FAQ</a>
+            <a href="#contact" class="hover:text-primary">Contact</a>
+            <button @click="toggleDark" class="ml-2 rounded-theme px-3 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:shadow-glow transition"><span x-show="!dark">Dark</span><span x-show="dark">Light</span></button>
+            <button @click="openSettings=true" class="ml-2 rounded-theme px-3 py-2 bg-primary text-white hover:shadow-glow transition">⚙︎ Settings</button>
+          </nav>
+          <button @click="mobileMenu=!mobileMenu; showHeader()" class="md:hidden rounded-theme px-3 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900">Menu</button>
+        </div>
+        <div x-show="mobileMenu" x-transition class="md:hidden px-4 pb-4">
+          <div class="grid gap-2 text-sm">
+            <a @click="mobileMenu=false" href="#portfolio" class="rounded-theme px-3 py-2 hover:bg-white/10">Work</a>
+            <a @click="mobileMenu=false" href="#packages" class="rounded-theme px-3 py-2 hover:bg-white/10">Packages</a>
+            <a @click="mobileMenu=false" href="#features" class="rounded-theme px-3 py-2 hover:bg-white/10">Features</a>
+            <a @click="mobileMenu=false" href="#faq" class="rounded-theme px-3 py-2 hover:bg-white/10">FAQ</a>
+            <a @click="mobileMenu=false" href="#contact" class="rounded-theme px-3 py-2 hover:bg-white/10">Contact</a>
+            <button @click="openSettings=true" class="mt-2 rounded-theme px-3 py-2 bg-primary text-white">⚙︎ Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO with 3D background -->
+  <section id="hero" class="relative min-h-[95vh] flex items-center justify-center overflow-hidden">
+    <!-- Three.js background -->
+    <div id="three-hero"></div>
+    <div class="absolute inset-0 hero-overlay"></div>
+
+    <!-- Foreground content -->
+    <div class="relative z-10 mx-auto max-w-6xl px-4 text-center">
+      <p class="inline-flex items-center gap-2 rounded-theme bg-white/10 dark:bg-black/30 px-4 py-2 text-xs uppercase tracking-widest text-white/90">Design-led. Conversion-first. Lightning-fast.</p>
+      <h1 class="mt-6 display text-5xl sm:text-7xl md:text-8xl font-extrabold leading-[0.95] text-white">
+        Websites that <span class="text-primary">Convert</span> & <span class="text-white/90">Impress</span>
+      </h1>
+      <p class="mt-5 text-lg sm:text-xl text-white/90 max-w-3xl mx-auto">Cinematic 3D background with parallax motion. Built to wow — and to convert.</p>
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <a href="#packages" class="rounded-theme bg-primary hover:opacity-90 text-white px-6 py-3 shadow-glow">View My Packages</a>
+        <a href="#portfolio" class="rounded-theme bg-white/15 hover:bg-white/25 text-white px-6 py-3 backdrop-blur">See My Work</a>
+      </div>
+      <div class="relative mt-14 flex justify-center" data-aos="zoom-in">
+        <div class="rounded-[24px] overflow-hidden shadow-2xl ring-1 ring-white/10 hover-raise">
+          <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1600&auto=format&fit=crop" alt="Showcase" class="w-[920px] max-w-full">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky CTA -->
+    <a href="#contact" class="fixed bottom-6 right-6 rounded-full px-5 py-3 bg-primary text-white shadow-glow hover:opacity-90">Get a Quote</a>
+  </section>
+
+  <!-- Simple continuation so the page scrolls -->
+  <section class="py-24 bg-white dark:bg-slate-950">
+    <div class="mx-auto max-w-4xl px-4 text-center">
+      <h2 class="text-3xl font-bold display mb-4">Scroll Test</h2>
+      <p class="text-slate-600 dark:text-slate-300">Scroll to see the subtle depth parallax react to your cursor and movement. We can plug this hero directly into the full site.</p>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <div x-show="openSettings" x-transition.opacity class="fixed inset-0 z-[100] bg-black/50"></div>
+  <aside x-show="openSettings" x-transition class="fixed right-0 top-0 bottom-0 z-[101] w-[360px] max-w-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-6 overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">Site Settings</h3>
+      <button @click="openSettings=false" class="px-3 py-1 rounded-theme bg-slate-100 dark:bg-slate-800">✕</button>
+    </div>
+    <div class="space-y-6 text-sm">
+      <div>
+        <label class="block mb-2 font-medium">Primary Colour</label>
+        <input type="color" x-model="primary" @input="applyTheme" class="w-full h-10 rounded-theme border border-slate-300 dark:border-slate-700 p-1" />
+      </div>
+      <div>
+        <label class="block mb-2 font-medium">Corner Radius (px)</label>
+        <input type="range" min="4" max="32" x-model="radius" @input="applyTheme" class="w-full">
+        <div class="mt-1 opacity-70">Current: <span x-text="radius"></span>px</div>
+      </div>
+      <div>
+        <label class="block mb-2 font-medium">Grain / Texture</label>
+        <input type="range" min="0" max="0.25" step="0.01" x-model="grain" @input="applyTheme" class="w-full">
+        <div class="mt-1 opacity-70"><span x-text="grain"></span></div>
+      </div>
+      <div>
+        <label class="block mb-2 font-medium">Heading Font</label>
+        <select x-model="displayFont" @change="applyTheme" class="w-full rounded-theme px-3 py-2 bg-slate-100 dark:bg-slate-800">
+          <option value="'Space Grotesk', system-ui, sans-serif">Space Grotesk (default)</option>
+          <option value="'Inter', system-ui, sans-serif">Inter</option>
+          <option value="'system-ui', sans-serif">System UI</option>
+        </select>
+      </div>
+      <div>
+        <label class="block mb-2 font-medium">UI Font</label>
+        <select x-model="uiFont" @change="applyTheme" class="w-full rounded-theme px-3 py-2 bg-slate-100 dark:bg-slate-800">
+          <option value="'Inter', system-ui, sans-serif">Inter (default)</option>
+          <option value="'Space Grotesk', system-ui, sans-serif">Space Grotesk</option>
+          <option value="'system-ui', sans-serif">System UI</option>
+        </select>
+      </div>
+      <div>
+        <label class="block mb-2 font-medium">3D Intensity</label>
+        <input type="range" min="0" max="1.4" step="0.05" x-model="intensity" @input="applyTheme" class="w-full">
+        <div class="mt-1 opacity-70"><span x-text="Number(intensity).toFixed(2)"></span></div>
+      </div>
+      <div class="pt-2 flex items-center gap-3">
+        <button @click="resetTheme" class="rounded-theme px-4 py-2 bg-slate-100 dark:bg-slate-800">Reset</button>
+        <button @click="persist(); openSettings=false" class="rounded-theme px-4 py-2 bg-primary text-white">Save</button>
+      </div>
+      <p class="text-xs opacity-70">Settings save to localStorage.</p>
+    </div>
+  </aside>
+
+  <footer class="py-10 border-t border-slate-200 dark:border-slate-800">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+      <p class="text-sm opacity-70">© <span id="year"></span> Wells Digital — All rights reserved.</p>
+      <button @click="openSettings=true" class="rounded-theme px-4 py-2 bg-primary text-white">Open Settings</button>
+    </div>
+  </footer>
+
+  <script>
+    // Header show/hide
+    (function headerReveal(){
+      const header = document.querySelector('header');
+      const zone = document.getElementById('top-hover-zone');
+      let hideTimeout;
+      function show(){ header.dataset.hidden = 'false'; clearTimeout(hideTimeout); hideTimeout = setTimeout(()=> header.dataset.hidden = 'true', 2200); }
+      function hide(){ header.dataset.hidden = 'true'; }
+      zone.addEventListener('mousemove', show);
+      zone.addEventListener('mouseenter', show);
+      document.addEventListener('scroll', () => { if(window.scrollY < 10) hide(); });
+      hide();
+      window._showHeader = show;
+    })();
+
+    // Alpine state
+    function siteState(){
+      return {
+        dark:false, mobileMenu:false, openSettings:false,
+        primary:'#00d2ff', radius:16, grain:.04,
+        displayFont:\"'Space Grotesk', system-ui, sans-serif\",
+        uiFont:\"'Inter', system-ui, sans-serif\",
+        intensity:1.0,
+        toggleDark(){ this.dark=!this.dark; this.persist() },
+        showHeader(){ if(window._showHeader) window._showHeader(); },
+        applyTheme(){
+          document.documentElement.style.setProperty('--primary', this.primary);
+          document.documentElement.style.setProperty('--radius', this.radius + 'px');
+          document.documentElement.style.setProperty('--grain', this.grain);
+          document.documentElement.style.setProperty('--font-ui', this.uiFont);
+          document.documentElement.style.setProperty('--font-display', this.displayFont);
+          if(window._threeSetIntensity) window._threeSetIntensity(this.intensity);
+          if(window._threeSetPrimary) window._threeSetPrimary(this.primary);
+        },
+        resetTheme(){
+          this.primary = '#00d2ff'; this.radius=16; this.grain=.04; this.intensity=1.0;
+          this.displayFont = \"'Space Grotesk', system-ui, sans-serif\";
+          this.uiFont = \"'Inter', system-ui, sans-serif\";
+          this.dark=false; this.applyTheme(); this.persist();
+        },
+        persist(){
+          const data = {dark:this.dark, primary:this.primary, radius:this.radius, grain:this.grain, displayFont:this.displayFont, uiFont:this.uiFont, intensity:this.intensity};
+          localStorage.setItem('wd-theme-3d', JSON.stringify(data));
+        },
+        init(){
+          const saved = localStorage.getItem('wd-theme-3d');
+          if(saved){ try{ Object.assign(this, JSON.parse(saved)) }catch(e){} }
+          document.getElementById('year').textContent = new Date().getFullYear();
+          this.applyTheme();
+          AOS.init({ once:true, duration: 800, easing: 'ease-out-cubic' });
+          initThreeHero(this.primary, this.intensity);
+        }
+      }
+    }
+
+    // THREE.js 3D parallax background
+    function initThreeHero(primaryColor = '#00d2ff', intensity = 1.0){
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const container = document.getElementById('three-hero');
+      if(!container || !window.THREE){ return; }
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(55, container.clientWidth/container.clientHeight, 0.1, 200);
+      camera.position.set(0, 0, 22);
+
+      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      container.appendChild(renderer.domElement);
+
+      // Resize
+      function onResize(){
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }
+      window.addEventListener('resize', onResize);
+
+      // Group for parallax
+      const root = new THREE.Group();
+      scene.add(root);
+
+      // Convert hex to THREE.Color
+      const col = new THREE.Color(primaryColor);
+      window._threeSetPrimary = (c)=>{
+        col.set(c);
+      };
+
+      // Shader plane (liquid gradient)
+      const uniforms = {
+        u_time: { value: 0 },
+        u_color: { value: col },
+        u_intensity: { value: intensity }
+      };
+      window._threeSetIntensity = (i)=>{ uniforms.u_intensity.value = i; };
+
+      const frag = `
+        precision highp float;
+        uniform float u_time;
+        uniform vec3 u_color;
+        uniform float u_intensity;
+        varying vec2 vUv;
+
+        // Simple 2D noise
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453123); }
+        float noise(in vec2 p){
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          vec2 u = f*f*(3.0-2.0*f);
+          return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+        float fbm(vec2 p){
+          float f = 0.0;
+          float amp = 0.5;
+          for(int i=0;i<5;i++){
+            f += amp * noise(p);
+            p *= 2.0;
+            amp *= 0.5;
+          }
+          return f;
+        }
+        void main(){
+          vec2 uv = vUv * 2.0 - 1.0;
+          float t = u_time * 0.05;
+          float n = fbm(uv * 2.0 + t);
+          float m = fbm(uv * 3.5 - t*1.3);
+          float mixv = smoothstep(0.2, 0.8, n);
+          vec3 c1 = u_color;
+          vec3 c2 = vec3(0.08,0.11,0.23); // deep slate
+          vec3 grad = mix(c2, c1, mixv);
+          // subtle stripes
+          float stripes = 0.5 + 0.5*cos( (uv.x+uv.y)*8.0 + t*10.0 );
+          grad += 0.05*stripes;
+          // vignette
+          float d = length(uv);
+          grad *= 1.0 - smoothstep(0.6, 1.2, d);
+          // punch
+          grad = mix(grad, vec3(1.0), 0.04 * u_intensity);
+          gl_FragColor = vec4(grad, 1.0);
+        }
+      `;
+      const vert = `
+        precision highp float;
+        varying vec2 vUv;
+        void main(){
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }
+      `;
+      const planeGeo = new THREE.PlaneGeometry(40, 24, 1, 1);
+      const planeMat = new THREE.ShaderMaterial({ uniforms, fragmentShader: frag, vertexShader: vert });
+      const plane = new THREE.Mesh(planeGeo, planeMat);
+      plane.position.set(0,0,-2);
+      root.add(plane);
+
+      // Floating translucent cards for depth
+      const cardGeo = new THREE.PlaneGeometry(6, 4);
+      function makeCard(x,y,z,opacity, hue){
+        const mat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color().setHSL(hue, 0.6, 0.6), transparent:true, opacity, roughness:0.8, metalness:0.1, transmission:0.35, thickness:0.6 });
+        const mesh = new THREE.Mesh(cardGeo, mat);
+        mesh.position.set(x,y,z);
+        mesh.rotation.z = (Math.random()-0.5)*0.6;
+        root.add(mesh);
+        return mesh;
+      }
+      const cards = [
+        makeCard(-8, -2, 1, 0.55, 0.55),
+        makeCard(9, 3, 2, 0.45, 0.65),
+        makeCard(-2, 5, 3, 0.35, 0.50),
+        makeCard(3, -4, 1.5, 0.5, 0.58)
+      ];
+
+      // Particle field
+      const pts = [];
+      const N = 500;
+      for(let i=0;i<N;i++){
+        pts.push((Math.random()-0.5)*36, (Math.random()-0.5)*20, Math.random()*6 - 1);
+      }
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.06, transparent:true, opacity:0.65 });
+      const points = new THREE.Points(pGeo, pMat);
+      root.add(points);
+
+      // Mouse parallax
+      const target = new THREE.Vector2(0,0);
+      const parallax = new THREE.Vector2(0,0);
+      function onMove(e){
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        target.set((x - 0.5)*2, (y - 0.5)*2);
+      }
+      window.addEventListener('mousemove', onMove);
+
+      // Scroll subtle parallax
+      let lastScroll = window.scrollY;
+      function onScroll(){
+        const dy = window.scrollY - lastScroll;
+        lastScroll = window.scrollY;
+        root.position.y += dy * -0.0015 * intensity;
+      }
+      window.addEventListener('scroll', onScroll);
+
+      // Animate
+      const clock = new THREE.Clock();
+      function tick(){
+        const t = clock.getElapsedTime();
+        uniforms.u_time.value = t;
+        // Ease parallax
+        parallax.lerp(target, 0.08);
+        root.rotation.y = parallax.x * 0.25 * intensity;
+        root.rotation.x = -parallax.y * 0.15 * intensity;
+        // float cards
+        cards.forEach((c,i)=>{
+          c.position.y += Math.sin(t*0.6 + i)*0.002 * (i+1);
+          c.rotation.z += 0.0008 * (i%2?1:-1);
+        });
+        points.rotation.z += 0.0005;
+        renderer.render(scene, camera);
+        window._anim = requestAnimationFrame(tick);
+      }
+      if(!prefersReduced) tick();
+
+      // Fallback if WebGL fails
+      renderer.getContext();
+    }
+  </script>
+</body>
+</html>
